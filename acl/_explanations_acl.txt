@@ -1,0 +1,69 @@
+
+- host_vars/iosxe_latest			Définit les variables de connexion et d'authentification Ansible pour l'hôte réseau "iosxe_latest"
+
+---
+ansible_host: sandbox-iosxe-latest-1.cisco.com		Adresse ou nom DNS de l'équipement Cisco
+ansible_user: admin					Nom d'utilisateur SSH
+ansible_ssh_pass: C1sco12345				Mot de passe SSH
+ansible_connection: network_cli				Utilise une connexion CLI réseau (et non un shell Linux classique)
+ansible_network_os: ios					Indique que l'équipement utilise Cisco IOS/IOS-XE
+ansible_become: yes					Demande l'élévation de privilèges ("enable")
+ansible_become_method: enable				Utilise le mode "enable" Cisco pour les privilèges admin
+ansible_become_pass: C1sco12345				Mot de passe du mode "enable"
+
+
+- hosts						Inventaire Ansible
+
+[iosxe_devices]						Définit un groupe d'hôtes nommé "iosxe_devices"
+iosxe_latest						Nom logique d'un équipement appartenant à ce groupe. Les variables associées sont récupérées dans "host_vars/iosxe_latest"
+
+
+- add_acl_iosxe.yaml				Playbook Ansible qui créé/remplace une ACL Cisco IOS-XE sur les équipements du groupe "iosxe_devices"
+
+---
+- name: Define Paramenters				Nom du playbook
+  hosts: iosxe_devices					Exécute le playbook sur tous les équipements du groupe "iosxe_devices"
+  connection: network_cli				Utilise une connexion CLI réseau Cisco via SSH
+  tasks:						Liste des actions à exécuter
+    - name: load new acl into device			Nom de la tâche
+      ios_config:					Module Ansible permettant d'envoyer de la configuration Cisco IOS
+        lines:						Lignes de configuration à ajouter dans l'ACL
+          - 10 permit ip host 10.10.20.49 any log	
+          - 20 permit ip host 10.10.20.50 any log	
+          - 30 permit ip host 10.10.20.51 any log	
+        parents: ip access-list extended my_acl		Entre dans le mode de configuration de l'ACL "my_acl"
+        before: no ip access-list extended my_acl	Supprime l'ACL existant avant de recréer la nouvelle
+        match: exact					Vérifie que la configuration correspond exactement aux lignes définies
+
+
+- delete_acl_iosxe.yaml				Playbook Ansible qui supprime une ACL Cisco IOS-XE sur les équipements du groupe "iosxe_devices"
+
+---
+- name: Define Paramenters
+  hosts: iosxe_devices
+  gather_facts: no					Désactive la collecte des informations système pour aller plus vite
+  connection: network_cli
+  tasks:
+    - name: Delete 'my_acl' ACL
+      ios_config:
+        lines:
+          - no ip access-list extended my_acl		Commande Cisco supprimant l'ACL "my_acl"
+        parents: ip access-list extended my_acl
+        match: exact
+
+
+- update_acl_iosxe.yaml				Playbook Ansible qui modifie une ACL Cisco IOS-XE sur les équipements du groupe "iosxe_devices"
+
+---
+- name: Define Paramenters
+  hosts: iosxe_devices
+  gather_facts: no
+  connection: network_cli
+  tasks:
+    - name: Edit test ACL | add seq 40 & remove seq 30
+      ios_config:
+        lines:
+          - no 30					Supprime la règle ACL numéro 30
+          - 40 permit ip host 10.10.20.52 any log	Ajoute une nouvelle règle ACL numéro 40
+        parents: ip access-list extended my_acl
+        match: exact

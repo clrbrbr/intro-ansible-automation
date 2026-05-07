@@ -1,0 +1,39 @@
+
+- hosts					Inventaire Ansible contenant les équipements réseau à gérer, leur regroupement, et des variables communes par groupe
+
+[iosxe]
+sandbox-iosxe-latest-1.cisco.com
+
+[iosxr]
+sandbox-iosxr-1.cisco.com
+
+[iosxe:vars]
+ansible_network_os=ios
+ansible_user='admin'
+ansible_ssh_pass='C1sco12345' 
+
+[iosxr:vars]
+ansible_network_os=iosxr
+ansible_user='admin'
+ansible_ssh_pass='C1sco12345' 
+
+
+- show_ip_routes.yaml
+
+---
+
+- hosts: all
+  connection: network_cli
+  gather_facts: no
+
+  tasks:
+      - name: Checking connectivity
+        ignore_errors: True
+        ios_command:
+          commands:
+            - show ip route
+        register: ios_output
+
+      - name: Show output			Affiche la sortie de la commande sous forme de liste de lignes avec "stdout_lines"
+        debug: 
+          msg: "{{ ios_output.stdout_lines }}"

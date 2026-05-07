@@ -1,0 +1,54 @@
+
+- hosts					Inventaire Ansible contenant les équipements réseau à gérer, leur regroupement, et des variables communes par groupe
+
+[iosxe]						Groupe "iosxe"
+sandbox-iosxe-latest-1.cisco.com		contenant un équipement Cisco IOS-XE
+
+[iosxr]						Groupe "iosxr"
+sandbox-iosxr-1.cisco.com			contenant un équipement Cisco IOS-XR
+
+[iosxe:vars]					Variables appliquées à tous les équipements du groupe "iosxe"
+ansible_network_os=ios				Type d'OS réseau: Cisco IOS/IOS-XE
+ansible_user='admin'				Nom d'utilisateur SSH
+ansible_ssh_pass='C1sco12345' 			Mot de passe SSH
+
+[iosxr:vars]					Variables appliquées à tous les équipements du groupe "iosxe"
+ansible_network_os=iosxr			Type d'OS réseau: Cisco IOS/IOS-XR
+ansible_user='admin'
+ansible_ssh_pass='C1sco12345' 
+
+
+- sh_ip_routes_conditionals.yaml	Playbook Ansible qui vérifie l'exécution de la commande "show ip route" sur tous les équipements et affiche un résultat conditionnel
+
+---
+
+- hosts: all						Exécute le playbook sur tous les équipements de l'inventaire
+  connection: network_cli				Utilise une connexion CLI réseau Cisco via SSH
+  gather_facts: no					Désactive la collecte automatique d'informations
+
+  tasks:
+      - name: Checking connectivity			Tâche principale de vérification
+        ignore_errors: True				Continue l'exécution même en cas d'erreur
+        ios_command:
+          commands:
+            - show ip route				Exécute la commande Cisco "show ip route"
+        register: ios_output				Stocke le résultat dans la variable "ios_output"
+
+      # - name: Verification of output (failed)		Message en cas d'échec
+      #   debug: 
+      #     msg: "{{ 'Failed with message: ' ~ ios_output.msg }}"
+      #   when: ios_output.failed
+
+      # - name: Verification of output (success)	Message en cas de succès
+      #   debug: 
+      #     msg: "{{ 'Success' }}"
+      #   when: ios_output.failed == False
+
+
+      - name: Verification of output			Affiche une message unique "Success" si la commande a réussi, ou "Failed with message:..." si la commande a échoué
+        debug: 
+          msg: "{{ 'Failed with message: ' ~ ios_output.msg if ios_output.failed else 'Success' }}"		Version simplifiée utilisant une condition "if/else" dans Jinja2
+															{{ ... }}					Evalue une expression dans Ansible
+															ios.output.failed				Vrai si la commande a échoué, Faux si elle a réussi
+															'Failed with message: ' ~ ios_output.msg	"~" permet la concaténation de chaînes en Jinja2
+															
